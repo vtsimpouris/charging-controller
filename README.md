@@ -1,8 +1,13 @@
-Charging Controller
-![CI](https://github.com/vtsimpouris/charging-controller/actions/workflows/ci.yml)
+# Charging Controller
+
+[![CI](https://github.com/vtsimpouris/charging-controller/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/vtsimpouris/charging-controller/actions/workflows/ci.yml)
+
 Embedded C/C++ controller simulator demonstrating hardware abstraction, fault handling, watchdog supervision, CRC-protected communication, unit testing, and closed-loop control analysis.
+
 The project separates hardware-facing C code from higher-level C++ control logic and uses a simulated hardware abstraction layer to exercise controller behavior without physical hardware.
-Architecture
+
+## Architecture
+
 ```text
                  Command packet
                 + CRC-8 protection
@@ -44,98 +49,143 @@ Sensors ─────►│       HAL       │
                   G(s), Kp, poles
                          │
                          ▼
-              control\_parameters.json
+              control_parameters.json
                          │
                          ▼
 Current reference ──► CurrentController ──► Simulated plant
                            ▲                    │
                            └──── feedback ◄─────┘
 ```
+
 The HAL provides simulated sensor measurements, actuator control, communication state, and watchdog supervision.
-The current-control gain is supported by a root-locus analysis of the simplified plant. Both the Python analysis and the C++ simulation read the same controller configuration, keeping the analytical design and implementation synchronized.
-Safety and Fault Handling
+
+The current-control gain is supported by a root-locus analysis of the simplified plant. Both the Python analysis and C++ simulation read the same controller configuration, keeping the analytical design and implementation synchronized.
+
+## Safety and Fault Handling
+
 The controller demonstrates several independent protection mechanisms:
-Overcurrent → immediate fault and contactor opening
-Overvoltage → immediate fault and contactor opening
-Overtemperature → immediate fault and contactor opening
-Communication failure → invalid CRC-protected packets accumulate toward a communication timeout
-Control-task stall → watchdog independently forces the contactor open
-Incoming command packets use CRC-8 validation.
-During temporary packet corruption, the last valid command is retained while the controller tracks communication-loss duration. If the timeout is reached, the controller enters the fault state and opens the contactor.
-Closed-Loop Current Control
-The current-control demonstration uses a proportional controller with unity feedback and the simplified plant
-[
-G(s)=\frac{1}{s(s+2)}
-]
-with proportional gain (K_p).
-The closed-loop transfer function is
-[
-T(s)
-\frac{K_pG(s)}
-{1+K_pG(s)}
-\frac{K_p}
-{s^2+2s+K_p}
-]
-giving the root-locus characteristic equation
-[
-\boxed{s^2+2s+K_p=0}
-]
-and closed-loop poles
-[
-s=-1\pm\sqrt{1-K_p}.
-]
-For (K_p>1),
-[
-s=-1\pm j\sqrt{K_p-1}.
-]
-Controller parameters are stored in:
+
+- **Overcurrent** → immediate fault and contactor opening
+- **Overvoltage** → immediate fault and contactor opening
+- **Overtemperature** → immediate fault and contactor opening
+- **Communication failure** → invalid CRC-protected packets accumulate toward a communication timeout
+- **Control-task stall** → watchdog independently forces the contactor open
+
+Incoming command packets use **CRC-8** validation.
+
+During temporary packet corruption, the last valid command is retained while the controller tracks the communication-loss duration. If the timeout is reached, the controller enters the fault state and opens the contactor.
+
+## Closed-Loop Current Control
+
+The current-control demonstration uses a proportional controller with unity feedback.
+
+The simplified plant is:
+
 ```text
-config/control\_parameters.json
+           1
+G(s) = ----------
+        s(s + 2)
 ```
+
+With proportional gain `Kp`, the closed-loop transfer function is:
+
+```text
+             Kp
+T(s) = ----------------
+       s² + 2s + Kp
+```
+
+The corresponding characteristic equation is:
+
+```text
+s² + 2s + Kp = 0
+```
+
+and the closed-loop poles are:
+
+```text
+s = -1 ± sqrt(1 - Kp)
+```
+
+For `Kp > 1`:
+
+```text
+s = -1 ± j sqrt(Kp - 1)
+```
+
+Controller parameters are stored in:
+
+```text
+config/control_parameters.json
+```
+
 Current configuration:
+
 ```json
 {
   "kp": 2.0,
-  "control\_period\_ms": 20
+  "control_period_ms": 20
 }
 ```
-For
-[
-K_p=2
-]
-the characteristic equation becomes
-[
-s^2+2s+2=0
-]
-with closed-loop poles
-[
-s=-1\pm j.
-]
-The corresponding natural frequency is
-[
-\omega_n=\sqrt{2}=1.414\text{ rad/s}
-]
-and the damping ratio is
-[
-\zeta=\frac{1}{\sqrt{2}}=0.707.
-]
-This gives a theoretical step overshoot of approximately 4.3%, which is also visible in the simulated current response.
-Root-Locus Analysis
-![Root locus](analysis/root_locus.png)
-The figure is generated by:
+
+For:
+
 ```text
-analysis/root\_locus.py
+Kp = 2
 ```
-It shows how the roots of
-[
-s^2+2s+K_p=0
-]
-move as (K_p) varies.
-Orange × — open-loop poles at (s=-2) and (s=0)
-Blue line — root locus as (K_p) varies
-Black ○ — selected closed-loop poles for (K_p=2) at (s=-1\pm j)
-The Python analysis reads `kp` directly from `config/control\_parameters.json`, the same configuration used by the C++ current controller.
+
+the characteristic equation becomes:
+
+```text
+s² + 2s + 2 = 0
+```
+
+with closed-loop poles:
+
+```text
+s = -1 ± j
+```
+
+The corresponding natural frequency is approximately:
+
+```text
+ωn = sqrt(2) = 1.414 rad/s
+```
+
+and the damping ratio is:
+
+```text
+ζ = 1 / sqrt(2) = 0.707
+```
+
+This gives a theoretical step overshoot of approximately **4.3%**, which is also visible in the simulated current response.
+
+## Root-Locus Analysis
+
+![Root locus](analysis/root_locus.png)
+
+The figure is generated by:
+
+```text
+analysis/root_locus.py
+```
+
+It shows how the roots of:
+
+```text
+s² + 2s + Kp = 0
+```
+
+move as `Kp` varies.
+
+- **Orange ×** — open-loop poles at `s = -2` and `s = 0`
+- **Blue line** — root locus as `Kp` varies
+- **Black ○** — selected closed-loop poles for `Kp = 2` at `s = -1 ± j`
+
+The Python analysis reads `kp` directly from `config/control_parameters.json`, the same configuration used by the C++ current controller.
+
 The design flow is:
+
 ```text
 Plant model
     │
@@ -146,7 +196,7 @@ Root-locus analysis
 Gain selection
     │
     ▼
-control\_parameters.json
+control_parameters.json
     │
     ▼
 C++ CurrentController
@@ -154,88 +204,117 @@ C++ CurrentController
     ▼
 Simulated closed-loop response
 ```
-Unit Tests
-The project includes 13 GoogleTest/CTest unit tests covering the main deterministic controller and protocol behavior.
+
+## Unit Tests
+
+The project includes **13 GoogleTest/CTest unit tests** covering the main deterministic controller and protocol behavior.
+
 Test coverage includes:
-safe initial controller state
-transition into charging
-overcurrent detection
-overvoltage detection
-overtemperature detection
-100 ms communication timeout behavior
-controller reset after a fault
-positive, negative, and zero current-control error
-CRC-8 known reference vector
-valid packet acceptance
-corrupted packet rejection
-Run all tests with:
-```bash
-ctest --test-dir build --output-on-failure
-```
-A successful run reports:
+
+- safe initial controller state
+- transition into charging
+- overcurrent detection
+- overvoltage detection
+- overtemperature detection
+- 100 ms communication timeout behavior
+- controller reset after a fault
+- positive current-control error
+- negative current-control error
+- zero current-control error
+- CRC-8 known reference vector
+- valid packet acceptance
+- corrupted packet rejection
+
+A successful test run reports:
+
 ```text
 100% tests passed, 0 tests failed out of 13
 ```
-Build and Run
-Requirements
-CMake 3.24+
-C11-compatible compiler
-C++20-compatible compiler
-Python 3 with NumPy and Matplotlib for the control analysis
-Build
+
+## Build and Run
+
+### Requirements
+
+- CMake 3.24+
+- C11-compatible compiler
+- C++20-compatible compiler
+- Python 3
+- NumPy and Matplotlib for the control analysis
+
+### Build
+
 From the repository root:
+
 ```bash
 cmake -S . -B build
 cmake --build build
 ```
-Run the Controller Simulation
+
+### Run the Controller Simulation
+
 Linux/macOS:
+
 ```bash
 ./build/ChargingController
 ```
+
 Windows:
+
 ```powershell
-.\\build\\ChargingController.exe
+.\build\ChargingController.exe
 ```
+
 The executable demonstrates:
-healthy controller startup
-overcurrent protection
-overtemperature protection
-CRC-protected communication failure and timeout
-watchdog-triggered safe state
-closed-loop current response
-Run the Unit Tests
+
+- healthy controller startup
+- overcurrent protection
+- overtemperature protection
+- CRC-protected communication failure and timeout
+- watchdog-triggered safe state
+- closed-loop current response
+
+### Run the Unit Tests
+
 ```bash
 ctest --test-dir build --output-on-failure
 ```
-Run the Root-Locus Analysis
+
+### Run the Root-Locus Analysis
+
 Install the Python dependencies:
+
 ```bash
 python -m pip install numpy matplotlib
 ```
+
 Run:
+
 ```bash
-python analysis/root\_locus.py
+python analysis/root_locus.py
 ```
+
 The script reads the shared controller configuration and regenerates:
+
 ```text
-analysis/root\_locus.png
+analysis/root_locus.png
 ```
-Project Structure
+
+## Project Structure
+
 ```text
 ChargingController/
 ├── .github/
 │   └── workflows/
 │       └── ci.yml
 ├── analysis/
-│   ├── root\_locus.py
-│   └── root\_locus.png
+│   ├── root_locus.py
+│   └── root_locus.png
 ├── config/
-│   └── control\_parameters.json
+│   └── control_parameters.json
 ├── hal/
 │   ├── hal.c
 │   ├── hal.h
-│   └── sim\_hal.h
+│   └── sim_hal.h
 ├── include/
 │   ├── ChargerState.hpp
 │   ├── ChargingController.hpp
@@ -250,26 +329,36 @@ ChargingController/
 │   ├── CurrentController.cpp
 │   └── main.cpp
 ├── tests/
-│   ├── test\_charging\_controller.cpp
-│   ├── test\_current\_controller.cpp
-│   └── test\_protocol.cpp
+│   ├── test_charging_controller.cpp
+│   ├── test_current_controller.cpp
+│   └── test_protocol.cpp
 ├── .gitignore
 └── CMakeLists.txt
 ```
-Continuous Integration
+
+## Continuous Integration
+
 GitHub Actions validates the project on every push and pull request to `main`.
+
 The CI pipeline performs:
+
 ```text
 Checkout repository
-        ↓
+        │
+        ▼
 CMake configure
-        ↓
+        │
+        ▼
 Build C/C++
-        ↓
+        │
+        ▼
 Run 13 unit tests with CTest
-        ↓
+        │
+        ▼
 Run full controller simulation
-        ↓
+        │
+        ▼
 CI pass
 ```
+
 This provides both focused unit-level verification and a full executable smoke/integration check on a clean environment.
