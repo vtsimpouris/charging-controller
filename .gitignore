@@ -1,0 +1,26 @@
+# CLion / JetBrains
+.idea/
+
+# CMake build directories
+cmake-build-*/
+
+# CMake generated files
+CMakeFiles/
+CMakeCache.txt
+cmake_install.cmake
+Makefile
+
+# Build outputs
+*.exe
+*.obj
+*.o
+*.pdb
+*.ilk
+
+# Python cache
+__pycache__/
+*.pyc
+
+# OS/editor noise
+.DS_Store
+Thumbs.db
