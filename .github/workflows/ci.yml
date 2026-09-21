@@ -3,11 +3,12 @@ name: CI
 on:
   push:
     branches: [main]
+
   pull_request:
     branches: [main]
 
 jobs:
-  build-and-run:
+  build-test-run:
     runs-on: ubuntu-latest
 
     steps:
@@ -19,6 +20,9 @@ jobs:
 
       - name: Build
         run: cmake --build build --config Release
+
+      - name: Run unit tests
+        run: ctest --test-dir build --output-on-failure
 
       - name: Run controller simulation
         run: ./build/ChargingController

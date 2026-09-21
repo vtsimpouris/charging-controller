@@ -49,3 +49,62 @@ target_link_libraries(
         PRIVATE
         nlohmann_json::nlohmann_json
 )
+
+# ---------------------------------------------------------
+# Unit tests
+# ---------------------------------------------------------
+
+include(CTest)
+
+if(BUILD_TESTING)
+
+    FetchContent_Declare(
+            googletest
+            GIT_REPOSITORY https://github.com/google/googletest.git
+            GIT_TAG v1.15.2
+    )
+
+    # Prevent GoogleTest from changing the Windows runtime library.
+    set(
+            gtest_force_shared_crt
+            ON
+            CACHE BOOL ""
+            FORCE
+    )
+
+    FetchContent_MakeAvailable(googletest)
+
+    add_executable(
+            ChargingControllerTests
+
+            tests/test_charging_controller.cpp
+            tests/test_current_controller.cpp
+            tests/test_protocol.cpp
+
+            src/ChargingController.cpp
+            src/CurrentController.cpp
+            protocol/protocol.c
+    )
+
+    target_include_directories(
+            ChargingControllerTests
+            PRIVATE
+
+            ${CMAKE_CURRENT_SOURCE_DIR}/include
+            ${CMAKE_CURRENT_SOURCE_DIR}/protocol
+    )
+
+    target_link_libraries(
+            ChargingControllerTests
+            PRIVATE
+
+            GTest::gtest_main
+    )
+
+    include(GoogleTest)
+
+    gtest_discover_tests(
+            ChargingControllerTests
+    )
+
+endif()
